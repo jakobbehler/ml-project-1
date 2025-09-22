@@ -46,6 +46,94 @@ def standardize_selected_columns(x, mask=None):
 
     return Z
 
+### ORDINAL FEATURES
+
+def clean_ordinal_feature(col):
+    """Takes a column of ordinal data and replace values after a gap with NaN. 
+        Example: a feature has a scale 1,2,3,4,7 where 7 is "no answer" then 7 is replaced with Null"""
+
+    unique_vals = np.unique(col)
+    diffs = np.diff(unique_vals)
+    
+    # Find first "gap" larger than 1
+    gap_idx = np.where(diffs > 1)[0]
+    if len(gap_idx) == 0:
+        return col  # no gap, return as-is
+    
+    cutoff = unique_vals[gap_idx[0] + 1]  # first value after the gap
+    cleaned = col.astype(float).copy()
+    cleaned[col >= cutoff] = np.nan
+    return cleaned
+
+
+### CONTINUOUS FEATURES
+
+def clean_continuous_feature(col, rules):
+    """
+    Clean a single feature column according to rules.
+    Rules can contain:
+      - 'replace': dict of value -> new_value
+      - 'remove': list of values to set as empty string
+      - 'ranges': dict like {"101-199": "lambda v: (v - 100) * 30"}
+    """
+    
+    col = col.astype(object).copy()
+
+    # Apply replacements
+    if "replace" in rules:
+        for old, new in rules["replace"].items():
+            col[col == old] = new
+
+    # Apply removals
+    if "remove" in rules:
+        for bad in rules["remove"]:
+            col[col == bad] = ""
+
+    # Apply range transformations
+    if "ranges" in rules:
+        for range_key, func_str in rules["ranges"].items():
+            start, end = map(int, range_key.split("-"))
+            func = eval(func_str)
+
+            # mask: not empty, not nan, within range
+            safe_mask = []
+            for v in col:
+                if v == "" or v is None:
+                    safe_mask.append(False)
+                else:
+                    try:
+                        iv = int(v)
+                        safe_mask.append(start <= iv <= end)
+                    except (ValueError, TypeError):
+                        safe_mask.append(False)
+            safe_mask = np.array(safe_mask, dtype=bool)
+
+            col[safe_mask] = [func(int(v)) for v in col[safe_mask]]
+
+    return col
+
+def apply_cleaning_continuous_features(X, feature_classes_dictionary, cleaning_rules):
+    """
+    Apply cleaning rules to dataset X.
+    - X: numpy array (N, d)
+    - feature_classes_dictionary: dict from ph.build_feature_dictionary
+    - cleaning_rules: dict with cleaning instructions
+    Returns: cleaned dataset (dtype=object so we can store empty cells)
+    """
+    X_cleaned = X.astype(object).copy()
+
+    for feat, rules in cleaning_rules.items():
+        # Find feature in dictionary
+        for group in feature_classes_dictionary.values():
+            if feat in group["names"]:
+                idx = group["indices"][group["names"].index(feat)]
+                col = X_cleaned[:, idx]
+                X_cleaned[:, idx] = clean_continuous_feature(col, rules)
+                break  # stop searching once found
+
+    return X_cleaned
+
+
 # -------------------------------------------------------------------------------------
 #  Functions for telling us what feature is categorical, continuous andd so on. 
 # -------------------------------------------------------------------------------------
@@ -85,3 +173,4 @@ def build_feature_dictionary(classes_path, feature_names_path):
     }
 
     return result
+

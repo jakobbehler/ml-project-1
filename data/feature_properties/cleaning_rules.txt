@@ -1,0 +1,45 @@
+HHADULT: remove 77, 99
+PHYSHLTH: 88 = 0, remove 77, 99
+MENTHLTH: 88 = 0, remove 77, 99
+POORHLTH: 88 = 0, remove 77, 99
+ALCDAY5:  convert to days in th past month: so 101 - 199 are 1-99 divided by 7 multiplied by 30. 201-299 is 1-99 / 888 = 0, /remove 777, 999 r
+AVEDRNK2: remove 77, 99
+DRNK3GE5: 88 = 0, remove 77, 99
+MAXDRNKS: remove 77, 99
+FRUITJU1: convert to days perr month: so 101-199 are 1-99 times 30, 201-299 are 1-99 divided by 7 times 30, 301-399 is 1-99, 300 = 0, 555 = 0, remove 777, 999
+FRUIT1: convert to days perr month: so 101-199 are 1-99 times 30, 201-299 are 1-99 divided by 7 times 30, 301-399 is 1-99, 300 = 0, 555 = 0, remove 777, 999
+FVBEANS: convert to days perr month: so 101-199 are 1-99 times 30, 201-299 are 1-99 divided by 7 times 30, 301-399 is 1-99, 300 = 0, 555 = 0, remove 777, 999
+FVGREEN: convert to days perr month: so 101-199 are 1-99 times 30, 201-299 are 1-99 divided by 7 times 30, 301-399 is 1-99, 300 = 0, 555 = 0, remove 777, 999
+FVORANG: convert to days perr month: so 101-199 are 1-99 times 30, 201-299 are 1-99 divided by 7 times 30, 301-399 is 1-99, 300 = 0, 555 = 0, remove 777, 999
+VEGETAB1: convert to days perr month: so 101-199 are 1-99 times 30, 201-299 are 1-99 divided by 7 times 30, 301-399 is 1-99, 300 = 0, 555 = 0, remove 777, 999
+EXEROFT1: convert to days in th past month: so 101 - 199 are 1-99 divided by 7 multiplied by 30. 201-299 is 1-99 / 888 = 0, /remove 777, 999
+EXERHMM1: remove 777, 999
+EXEROFT2:  convert to days in th past month: so 101 - 199 are 1-99 divided by 7 multiplied by 30. 201-299 is 1-99 / 888 = 0, /remove 777, 999
+EXERHMM2: remove 777, 999
+STRENGTH: 888 = 0, remove 777, 999
+FLSHTMY2: remove: 777777, 999999
+HIVTSTD3: remove: 777777, 999999
+BLDSUGAR:  convert to days per year: so 101-199 are 1-99 times 365, 201-299 are 1-99 times 51, 301-399 is 1-99 times 12, 401-499 is 1-99, 888 = 0, remove 777, 999
+FEETCHK2:  convert to days per year: so 101-199 are 1-99 times 365, 201-299 are 1-99 times 51, 301-399 is 1-99 times 12, 401-499 is 1-99, 888 = 0, 555 = 0, remove 777, 999
+DOCTDIAB:  88 = 0, remove 77, 99
+CHKHEMO3: 88 = 0, remove 77, 98, 99
+LONGWTCH: convert to days per year: so 101-199 are 1-99 times 365, 201-299 are 1-99 times 51, 301-399 is 1-99 times 12, 401-499 is 1-99, 888 = 0, 555 = 50, remove 777, 999
+ASTHMAGE: 97 = 5, remove 98, 99
+ASERVIST: 88 = 0, remove 98
+ASRCHKUP: 88 = 0, remove 77, 99
+ASACTLIM: 888 = 0, remove 777, 999
+SCNTWRK1: 98 = 0, remove 97, 99
+ADPLEASR: 88 = 0, remove 77, 99
+ADDOWN: 88 = 0, remove 77, 99
+ADSLEEP: 88 = 0, remove 77, 99
+ADENERGY: 88 = 0, remove 77, 99
+ADEAT1: 88 = 0, remove 77, 99
+ADFAIL: 88 = 0, remove 77, 99
+ADTHINK: 88 = 0, remove 77, 99
+ADMOVE: 88 = 0, remove 77, 99
+DROCDY3_: remove 900
+_DRNKWEK: remove 99900
+MAXVO2_: remove 99900
+FC60_
+PAFREQ1_
+PAFREQ2_
