@@ -2,6 +2,90 @@ import os
 import json
 import numpy as np
 
+# ----------------------------------------------------------------------------------------
+# Full Pipeline Functions
+# ---------------------------------------------------------------------------------------
+
+def preprocessing_pipeline(
+    X,
+    feature_names_path,
+    classes_path,
+    cleaning_rules,
+    drop_first=True,
+):
+    """
+    Full preprocessing pipeline:
+    - Load metadata
+    - Clean ordinal features
+    - Clean continuous features
+    - (Optional) impute missing values
+    - (Optional) normalize continuous features
+    - Drop unimportant columns
+    - One-hot encode categorical columns
+    
+    Returns
+    -------
+    X_out : np.ndarray
+        Transformed feature matrix
+    feature_names_out : list[str]
+        Updated feature names list
+    """
+    # 1. Load metadata----------------------------------------------------------------------------------------
+    feature_names = csv_to_list_1D(feature_names_path)
+    feature_dict = build_feature_dictionary(classes_path, feature_names)
+
+
+    # 2. Clean ordinal ----------------------------------------------------------------------------------------
+    
+    print("Cleaning Ordinal Features")
+    for j in feature_dict['ordinal']['indices']:
+        X[:, j] = clean_ordinal_feature(X[:, j])
+    print("Done.")
+    print("")
+
+    # 3. Clean continuous----------------------------------------------------------------------------------------
+   
+    print("Cleaning Continuous Features")
+    X = apply_cleaning_continuous_features(X, feature_dict, cleaning_rules)
+    print("Done.")
+    print("")
+
+
+    # 4. impute missing values----------------------------------------------------------------------------------------
+    # TODO: implement imputation 
+    
+    # 5. normalize continuous----------------------------------------------------------------------------------------
+    # can only be done if imputation is done 
+    '''
+    cont_indices = (
+        feature_dict['continuous']['indices'] +
+        feature_dict['continuous_but_null_also_a_number']['indices']
+    )
+    X = ph.standardize_selected_columns(X, mask=cont_indices)
+    '''
+    # 6. Drop unimportant columns----------------------------------------------------------------------------------------
+    print("Dropping Invalid Features")
+    X, feature_names, feature_dict = remove_unimportant_features(
+        X, feature_names, classes_path
+    )
+    print("Done.")
+    print("")
+
+    print("One Hot Encoding Categorical Features")
+    print()
+    print("This might take a while...")
+    print()
+    # 7. One-hot encode categoricals
+    X, feature_names = one_hot_all(X, feature_names)
+    feature_dict = build_feature_dictionary(classes_path, feature_names)
+    print("All preprocessing is done.")
+    print("--------------------------------")
+    return X, feature_names, feature_dict
+
+
+
+
+
 
 # -------------------------------------------------------------------------------------
 #  Functions for operations like filtering, normalization and stuff
@@ -134,37 +218,135 @@ def apply_cleaning_continuous_features(X, feature_classes_dictionary, cleaning_r
     return X_cleaned
 
 
+## Dropping Columns
+
+def drop_columns(X, feature_names, cols_to_drop):
+    '''
+    X: raw numpy array training data
+    feature_names: old list of feature names before removal
+    cols_to_drop: liust of strings of features to drop
+    '''
+    # find indices of columns to drop
+    drop_idx = [feature_names.index(c) for c in cols_to_drop]
+
+    # drop from X
+    X_new = np.delete(X, drop_idx, axis=1)
+
+    # update feature names
+    feature_names_new = [c for c in feature_names if c not in cols_to_drop]
+
+    return X_new, feature_names_new
+
+## Pipeline for dropping columns from class 'unrelated' and keeping dictionary updated
+
+def remove_unimportant_features(X, feature_names, classes_path):
+    """
+    Drop 'not_displayed_or_unrelated' features from X and update metadata.
+    """
+    # Build dictionary from current state
+    feature_dictionary = build_feature_dictionary(classes_path, feature_names)
+
+    # Find what to drop
+    drop_set_unrelated = feature_dictionary["not_displayed_or_unrelated"]["names"]
+
+    # Drop from BOTH X and feature_names
+    X_new, feature_names_new = drop_columns(X, feature_names, drop_set_unrelated)
+
+    # Rebuild dictionary from updated names
+    feature_dictionary_new = build_feature_dictionary(classes_path, feature_names_new)
+
+    return X_new, feature_names_new, feature_dictionary_new
+
+
+## CATEGORICAL
+
+def one_hot_column(X, feature_names, colname, drop_first=False):
+    """
+    One-hot encode a single column by name.
+    """
+    # 1. Find index
+    idx = feature_names.index(colname)
+    col = X[:, idx].astype(float)
+
+    # 2. Unique categories (ignore NaN for now)
+    categories = np.unique(col[~np.isnan(col)])
+    val_to_idx = {val: i for i, val in enumerate(categories)}
+    mapped = np.array([val_to_idx[v] if not np.isnan(v) else -1 for v in col])
+
+    # 3. One-hot encode
+    one_hot = np.eye(len(categories))[mapped.clip(min=0)]
+    if drop_first:
+        one_hot = one_hot[:, 1:]
+        categories = categories[1:]
+
+    # 4. Update X
+    X_left  = X[:, :idx]
+    X_right = X[:, idx+1:]
+    X_new = np.hstack([X_left, one_hot, X_right])
+
+    # 5. Update feature_names
+    new_names = [f"{colname}_{int(c)}" for c in categories]
+    feature_names_new = feature_names[:idx] + new_names + feature_names[idx+1:]
+
+    return X_new, feature_names_new
+
+# runs for 4 minutes on my machine because I write bad algorithms
+def one_hot_all(x, feature_names):
+
+    classes_path = "data/feature_properties/feature_classes.json"
+    feature_dictionary = build_feature_dictionary(classes_path, feature_names)
+
+    categorical_colnames = feature_dictionary['categorical']['names']
+
+    for colname in categorical_colnames:
+        x_new, feature_names_new = one_hot_column(x, feature_names, colname, drop_first=True)
+        feature_names = feature_names_new
+        x = x_new
+    
+    return x, feature_names
+
 # -------------------------------------------------------------------------------------
 #  Functions for telling us what feature is categorical, continuous andd so on. 
 # -------------------------------------------------------------------------------------
 
-def load_feature_classes(path):
-    with open(path, 'r') as f:
-        return json.load(f)
+import csv
 
-def load_feature_names(path):
-    with open(path, 'r') as f:
-        # Read all lines (column-wise CSV)
-        return [line.strip().strip('"') for line in f if line.strip()]
+def csv_to_list_1D(path):
 
-def build_feature_dictionary(classes_path, feature_names_path):
-    feature_classes = load_feature_classes(classes_path)
-    feature_names = load_feature_names(feature_names_path)
+    with open(path, newline="") as f:
+        reader = csv.reader(f)
+        list = [row[0] for row in reader]  # list of strings
+    return list
 
-    # Initialize empty index lists for each category
+
+def build_feature_dictionary(classes_path: str, feature_names: list[str]):
+    """
+    Build dictionary of feature classes using a fixed JSON schema 
+    and the latest feature_names list.
+
+    Args:
+        classes_path: path to feature_classes.json (static)
+        feature_names: current list of feature names (aligned with X)
+
+    Returns:
+        dict: { category: {"names": [...], "indices": [...] } }
+    """
+    # Load static schema
+    with open(classes_path, "r") as f:
+        feature_classes = json.load(f)
+
+    # Prepare index lists
     index_dict = {k: [] for k in feature_classes}
-
-    # Convert each group to a set for faster lookup
     class_sets = {k: set(v) for k, v in feature_classes.items()}
 
-    # Iterate once through feature_names
+    # Match names to categories
     for idx, name in enumerate(feature_names):
         for category, feature_set in class_sets.items():
             if name in feature_set:
                 index_dict[category].append(idx)
 
-    # Combine names + indices into the final structure
-    result = {
+    # Build result
+    return {
         category: {
             "names": [feature_names[i] for i in indices],
             "indices": indices
@@ -172,5 +354,17 @@ def build_feature_dictionary(classes_path, feature_names_path):
         for category, indices in index_dict.items()
     }
 
-    return result
 
+def drop_feature_names(feature_names: list[str], drop_list: list[str]) -> list[str]:
+    """
+    Return a new feature_names list with all names in drop_list removed.
+
+    Args:
+        feature_names: list of feature name strings (aligned with X columns)
+        drop_list: list of feature names to remove
+
+    Returns:
+        new list of feature names
+    """
+    drop_set = set(drop_list)  # faster lookup
+    return [name for name in feature_names if name not in drop_set]
