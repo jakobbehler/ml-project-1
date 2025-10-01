@@ -15,12 +15,12 @@ def preprocessing_pipeline(
 ):
     """
     Full preprocessing pipeline:
-    - Load metadata
+    - Load metadata (like feature categories)
     - Clean ordinal features
     - Clean continuous features
-    - (Optional) impute missing values
-    - (Optional) normalize continuous features
-    - Drop unimportant columns
+    - (todo) impute missing values
+    - (todo) normalize continuous features
+    - Drop unimportant / empty columns
     - One-hot encode categorical columns
     
     Returns
@@ -28,12 +28,12 @@ def preprocessing_pipeline(
     X_out : np.ndarray
         Transformed feature matrix
     feature_names_out : list[str]
-        Updated feature names list
+        Updated feature names list in the correct order / indices corresponding to the columns in X_out
     """
     # 1. Load metadata----------------------------------------------------------------------------------------
+    
     feature_names = csv_to_list_1D(feature_names_path)
     feature_dict = build_feature_dictionary(classes_path, feature_names)
-
 
     # 2. Clean ordinal ----------------------------------------------------------------------------------------
     
@@ -55,7 +55,8 @@ def preprocessing_pipeline(
     # TODO: implement imputation 
     
     # 5. normalize continuous----------------------------------------------------------------------------------------
-    # can only be done if imputation is done 
+   
+    # can only be done if imputation is done
     '''
     cont_indices = (
         feature_dict['continuous']['indices'] +
@@ -64,6 +65,7 @@ def preprocessing_pipeline(
     X = ph.standardize_selected_columns(X, mask=cont_indices)
     '''
     # 6. Drop unimportant columns----------------------------------------------------------------------------------------
+
     print("Dropping Invalid Features")
     X, feature_names, feature_dict = remove_unimportant_features(
         X, feature_names, classes_path
@@ -83,10 +85,6 @@ def preprocessing_pipeline(
     return X, feature_names, feature_dict
 
 
-
-
-
-
 # -------------------------------------------------------------------------------------
 #  Functions for operations like filtering, normalization and stuff
 # -------------------------------------------------------------------------------------
@@ -94,7 +92,7 @@ def preprocessing_pipeline(
 def standardize_selected_columns(x, mask=None):
     """
     
-    Standardize the input data feature-wise. A mask can be defined so only the selected features are standardized. 
+    Standardize the input data feature-wise. A mask can be defined so only the selected features are standardized, like the continuous features. 
 
     Args:
         x: numpy array of shape (num_samples, num_features)
@@ -105,16 +103,12 @@ def standardize_selected_columns(x, mask=None):
         standardized data, shape (num_samples, num_features)
 
     Example:
-    >>> standardize(np.array([[1, 2], [3, 4], [5, 6]]))
-    array([[-1.22474487, -1.22474487],
-           [ 0.        ,  0.        ],
-           [ 1.22474487,  1.22474487]])
-
     >>> standardize(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), mask=[0, 2])
     array([[-1.22474487,  5.        , -1.22474487],
            [ 0.        ,  8.        ,  0.        ],
            [ 1.22474487, 11.        ,  1.22474487]])
     """
+
     Z = x.copy().astype(float)
 
     # If no mask given, normalize all columns
@@ -237,7 +231,7 @@ def drop_columns(X, feature_names, cols_to_drop):
 
     return X_new, feature_names_new
 
-## Pipeline for dropping columns from class 'unrelated' and keeping dictionary updated
+## Pipeline for dropping columns from class 'not_displayed_or_unrelated' and keeping dictionary of feature indices updated
 
 def remove_unimportant_features(X, feature_names, classes_path):
     """
@@ -268,7 +262,7 @@ def one_hot_column(X, feature_names, colname, drop_first=False):
     idx = feature_names.index(colname)
     col = X[:, idx].astype(float)
 
-    # 2. Unique categories (ignore NaN for now)
+    # 2. Unique categories (ignore NaN for now) 
     categories = np.unique(col[~np.isnan(col)])
     val_to_idx = {val: i for i, val in enumerate(categories)}
     mapped = np.array([val_to_idx[v] if not np.isnan(v) else -1 for v in col])
@@ -312,7 +306,9 @@ def one_hot_all(x, feature_names):
 import csv
 
 def csv_to_list_1D(path):
-
+    """
+    extracts a column CSV from a path and turns it into a python list
+    """
     with open(path, newline="") as f:
         reader = csv.reader(f)
         list = [row[0] for row in reader]  # list of strings
@@ -321,8 +317,8 @@ def csv_to_list_1D(path):
 
 def build_feature_dictionary(classes_path: str, feature_names: list[str]):
     """
-    Build dictionary of feature classes using a fixed JSON schema 
-    and the latest feature_names list.
+    Build dictionary of feature classes and indices to keep track of 
+    what feature is where in the numpy array X, which does not keep track of labels
 
     Args:
         classes_path: path to feature_classes.json (static)
