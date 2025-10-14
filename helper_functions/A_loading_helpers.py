@@ -72,3 +72,29 @@ def create_csv_submission(ids, y_pred, name):
             writer.writerow({"Id": int(r1), "Prediction": int(r2)})
 
 
+###  -------------------------------------
+# NUMPY FILES
+###. -------------------------------------
+
+
+
+def save_numpy(array, path):
+    """
+    Save a NumPy array to a .npy file.
+    """
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    np.save(path, array)
+    print(f"Saved NumPy array to: {os.path.abspath(path)}")
+
+
+def load_numpy(path):
+    """
+    Load a NumPy array from a .npy file.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"File not found: {path}")
+
+    array = np.load(path, allow_pickle=True)
+    print(f"Loaded NumPy array from: {os.path.abspath(path)} | shape: {array.shape}")
+    return array
