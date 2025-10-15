@@ -1,6 +1,7 @@
 import os
 import json
 import numpy as np
+import csv
 
 # ----------------------------------------------------------------------------------------
 # Full Pipeline Functions
@@ -12,6 +13,7 @@ def preprocessing_pipeline(
     classes_path,
     cleaning_rules,
     drop_first=True,
+    drop_correlated_mode = 'nothing'
 ):
     """
     Full preprocessing pipeline:
@@ -21,6 +23,7 @@ def preprocessing_pipeline(
     - (todo) impute missing values
     - (todo) normalize continuous features
     - Drop unimportant / empty columns
+    -Drop highly correlated columns from X based on one of four modes: 'nothing', 'first', 'missing', or 'var'.
     - One-hot encode categorical columns
     
     Returns
@@ -34,6 +37,7 @@ def preprocessing_pipeline(
     
     feature_names = csv_to_list_1D(feature_names_path)
     feature_dict = build_feature_dictionary(classes_path, feature_names)
+    correlation_data_path = 'data/correlation_data'
 
     # 2. Clean ordinal ----------------------------------------------------------------------------------------
     
@@ -64,6 +68,7 @@ def preprocessing_pipeline(
     )
     X = ph.standardize_selected_columns(X, mask=cont_indices)
     '''
+
     # 6. Drop unimportant columns----------------------------------------------------------------------------------------
 
     print("Dropping Invalid Features")
@@ -73,13 +78,34 @@ def preprocessing_pipeline(
     print("Done.")
     print("")
 
+     # 7. Drop correlated columns----------------------------------------------------------------------------------------
+    
+    X, feature_names, feature_dict = drop_correlated_features(
+        X, feature_names, feature_dict, classes_path, correlation_data_path, mode=drop_correlated_mode
+    )
+
+    # 8. Drop invalid columns----------------------------------------------------------------------------------------
+    
+    print("Dropping Invalid Features")
+    X, feature_names, feature_dict = remove_unimportant_features(
+        X, feature_names, classes_path
+    )
+    print("Done.")
+    print("")
+
+    # 9 . One-hot encode categoricals ---------------------------------------------------------------------------------------
     print("One Hot Encoding Categorical Features")
     print()
     print("This might take a while...")
     print()
-    # 7. One-hot encode categoricals
+
+
     X, feature_names = one_hot_all(X, feature_names)
     feature_dict = build_feature_dictionary(classes_path, feature_names)
+    print("OMG finally. One hot encoding is done.")
+    print()
+
+
     print("All preprocessing is done.")
     print("--------------------------------")
     return X, feature_names, feature_dict
@@ -142,7 +168,6 @@ def clean_ordinal_feature(col):
     cleaned = col.astype(float).copy()
     cleaned[col >= cutoff] = np.nan
     return cleaned
-
 
 ### CONTINUOUS FEATURES
 
@@ -211,7 +236,6 @@ def apply_cleaning_continuous_features(X, feature_classes_dictionary, cleaning_r
 
     return X_cleaned
 
-
 ## Dropping Columns
 
 def drop_columns(X, feature_names, cols_to_drop):
@@ -220,6 +244,10 @@ def drop_columns(X, feature_names, cols_to_drop):
     feature_names: old list of feature names before removal
     cols_to_drop: liust of strings of features to drop
     '''
+    # keep only those that still exist
+
+    valid_cols_to_drop = [c for c in cols_to_drop if c in feature_names]
+
     # find indices of columns to drop
     drop_idx = [feature_names.index(c) for c in cols_to_drop]
 
@@ -299,6 +327,81 @@ def one_hot_all(x, feature_names):
     
     return x, feature_names
 
+
+# remove correlated
+
+def drop_correlated_features(X, feature_names, feature_dict, classes_path, correlation_data_path, mode='nothing'):
+    """
+    Drop features that are too correlated based on precomputed selection files.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Feature matrix
+    feature_names : list[str]
+        Current feature names (aligned with X)
+    feature_dict : dict
+        Dictionary of feature categories and indices
+    classes_path : str
+        Path to feature_classes.json
+    correlation_data_path : str
+        Directory containing correlation-based feature drop lists
+    mode : str
+        One of ['nothing', 'first', 'missing', 'var']
+
+    Returns
+    -------
+    X_new : np.ndarray
+    feature_names_new : list[str]
+    feature_dict_new : dict
+    """
+
+    if mode == 'nothing':
+        print("Skipping correlated feature dropping (mode='nothing').\n")
+        return X, feature_names, feature_dict
+
+    # Choose file based on mode
+    file_map = {
+        'first': 'features_to_delete_first.csv',
+        'missing': 'features_to_delete_missing.csv',
+        'var': 'features_to_delete_var.csv'
+    }
+
+    filename = file_map.get(mode)
+    path = os.path.join(correlation_data_path, filename)
+
+    # Load features to drop
+    if not os.path.exists(path):
+        print(f"Warning: Correlation file not found at {path}. No features dropped.\n")
+        return X, feature_names, feature_dict
+
+   
+    with open(path, newline='') as f:
+        reader = csv.DictReader(f)
+        features_to_drop = [row['feature_name'].strip() for row in reader if row.get('feature_name')]
+
+    if not features_to_drop:
+        print("No correlated features to drop.\n")
+        return X, feature_names, feature_dict
+
+    # Filter out features that no longer exist
+    features_to_drop_filtered = [f for f in features_to_drop if f in feature_names]
+
+    if not features_to_drop_filtered:
+        print("All correlated features already removed earlier — nothing to drop.\n")
+        return X, feature_names, feature_dict
+    
+    print(f"Dropping {len(features_to_drop)} highly correlated features ({mode} mode)...")
+
+    X_new, feature_names_new = drop_columns(X, feature_names, features_to_drop_filtered)
+
+    feature_dict_new = build_feature_dictionary(classes_path, feature_names_new)
+
+    print("Done.\n")
+    return X_new, feature_names_new, feature_dict_new
+
+
+
 # -------------------------------------------------------------------------------------
 #  Functions for telling us what feature is categorical, continuous andd so on. 
 # -------------------------------------------------------------------------------------
@@ -313,6 +416,16 @@ def csv_to_list_1D(path):
         reader = csv.reader(f)
         list = [row[0] for row in reader]  # list of strings
     return list
+
+def list_1D_to_csv(items, path):
+    """
+    Saves a 1D Python list as a one-column CSV file.
+    """
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        for item in items:
+            writer.writerow([item])
+
 
 
 def build_feature_dictionary(classes_path: str, feature_names: list[str]):

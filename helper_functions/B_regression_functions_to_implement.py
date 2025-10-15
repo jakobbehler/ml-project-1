@@ -1,16 +1,6 @@
 
 import numpy as np
 
-# STILL TODO
-'''
-Logistic regression using gradient descent (y∈ {0,1})
-logistic regression(y, tx, initial w,max iters, gamma)
-
-Regularized logistic regression using gradient descent (y∈ {0,1}, with regularization term λ∥w∥2
-reg logistic regression(y, tx, lambda , initial w, max iters, gamma)
-'''
-
-
 def compute_MSE_loss(y, X, w):
     """Calculate the loss using MSE.
 
@@ -226,3 +216,248 @@ def ridge_regression(y, tx, lambda_):
         w, *_ = np.linalg.lstsq(tx, y, rcond=None) # backup
         
     return w
+
+
+## ------------------------------------------------------------------------------------------------
+#. LOGISTIC REGRESSION
+###------------------------------------------------------------------------------------------------
+
+'''
+Logistic regression using gradient descent (y∈ {0,1})
+logistic regression(y, tx, initial w,max iters, gamma)
+'''
+
+def sigmoid(t):
+    """apply sigmoid function on t."""
+    return 1/(1+np.exp(-t))
+
+def calculate_logistic_loss(y, tx, w):
+    """compute the cost by negative log likelihood.
+
+    Args:
+        y:  shape=(N, 1)
+        tx: shape=(N, D)
+        w:  shape=(D, 1)
+
+    Returns:
+        a non-negative loss
+
+    >>> y = np.c_[[0., 1.]]
+    >>> tx = np.arange(4).reshape(2, 2)
+    >>> w = np.c_[[2., 3.]]
+    >>> round(calculate_loss(y, tx, w), 8)
+    1.52429481
+    """
+    assert y.shape[0] == tx.shape[0]
+    assert tx.shape[1] == w.shape[0]
+
+    # ***************************************************
+    
+    n = y.shape[0]
+    loss = 0
+
+    for i in range(n):
+        sig = sigmoid(tx[i].T @ w)
+     
+        loss += y[i] * np.log(sig) + (1-y[i]) * np.log(1-sig)
+    
+    return (-loss/n).item() # for some reason without item() its treated as a 1x1 numpy array, not a scalar
+
+
+def calculate_logistic_gradient(y, tx, w):
+    """compute the gradient of loss.
+
+    Args:
+        y:  shape=(N, 1)
+        tx: shape=(N, D)
+        w:  shape=(D, 1)
+
+    Returns:
+        a vector of shape (D, 1)
+
+    >>> np.set_printoptions(8)
+    >>> y = np.c_[[0., 1.]]
+    >>> tx = np.arange(6).reshape(2, 3)
+    >>> w = np.array([[0.1], [0.2], [0.3]])
+    >>> calculate_gradient(y, tx, w)
+    array([[-0.10370763],
+           [ 0.2067104 ],
+           [ 0.51712843]])
+    """
+    N = y.shape[0]
+
+    Xw_sig = np.zeros((N, 1)) # X(N,D) @ w(D,1) = Xw (N,1)
+
+    Xw = tx @ w # (N,1) vector
+
+    for i in range(N):
+        Xw_sig[i] = sigmoid(Xw[i]) # because sigmoid works on scalars, not vectors we apply it feature by feature 
+
+    return tx.T @ (Xw_sig-y) / N
+
+
+def logistic_regression_gradient_descent_step(y, tx, w, gamma):
+    """
+    Do one step of gradient descent using logistic regression. Return the loss and the updated w.
+
+    Args:
+        y:  shape=(N, 1)
+        tx: shape=(N, D)
+        w:  shape=(D, 1)
+        gamma: float
+
+    Returns:
+        loss: scalar number
+        w: shape=(D, 1)
+
+    >>> y = np.c_[[0., 1.]]
+    >>> tx = np.arange(6).reshape(2, 3)
+    >>> w = np.array([[0.1], [0.2], [0.3]])
+    >>> gamma = 0.1
+    >>> loss, w = learning_by_gradient_descent(y, tx, w, gamma)
+    >>> round(loss, 8)
+    0.62137268
+    >>> w
+    array([[0.11037076],
+           [0.17932896],
+           [0.24828716]])
+    """
+    
+    w_prime = w - gamma * calculate_logistic_gradient(y, tx, w)
+    loss = calculate_logistic_loss(y, tx, w)
+    return loss, w_prime
+
+def logistic_regression(y, tx, initial_w, max_iters, gamma):
+    """
+    Logistic regression using gradient descent.
+
+    Args:
+        y:  shape=(N, 1)
+        tx: shape=(N, D)
+        initial_w: initial weights, shape=(D, 1)
+        max_iters: number of iterations
+        gamma: learning rate
+
+    Returns:
+        w: final weights (D, 1)
+        weights: list of weight vectors per iteration
+        losses: list of loss values per iteration
+    """
+    losses = []
+    weights = []
+
+    w = initial_w.copy()
+
+    for iter in range(max_iters):
+        loss, w_new = logistic_regression_gradient_descent_step(y, tx, w, gamma)
+        losses.append(loss)
+        weights.append(w_new.copy()) 
+        w = w_new
+
+    return w, weights, losses
+
+'''
+Regularized logistic regression using gradient descent (y∈ {0,1}, with regularization term λ∥w∥2
+reg logistic regression(y, tx, lambda , initial w, max iters, gamma)
+'''
+
+def penalized_logistic_regression(y, tx, w, lambda_):
+    """return the loss and gradient.
+
+    Args:
+        y:  shape=(N, 1)
+        tx: shape=(N, D)
+        w:  shape=(D, 1)
+        lambda_: scalar
+
+    Returns:
+        loss: scalar number
+        gradient: shape=(D, 1)
+
+    >>> y = np.c_[[0., 1.]]
+    >>> tx = np.arange(6).reshape(2, 3)
+    >>> w = np.array([[0.1], [0.2], [0.3]])
+    >>> lambda_ = 0.1
+    >>> loss, gradient = penalized_logistic_regression(y, tx, w, lambda_)
+    >>> round(loss, 8)
+    0.62137268
+    >>> gradient
+    array([[-0.08370763],
+           [ 0.2467104 ],
+           [ 0.57712843]])
+    """
+ 
+    loss = calculate_logistic_loss(y, tx, w)
+    gradient = calculate_logistic_gradient(y, tx, w)
+
+    gradient = gradient + 2 * lambda_ * w
+
+    return loss, gradient
+
+
+def penalized_logistic_regression_gradient_decent_step(y, tx, w, gamma, lambda_):
+    """
+    Do one step of gradient descent, using the penalized logistic regression.
+    Return the loss and updated w.
+
+    Args:
+        y:  shape=(N, 1)
+        tx: shape=(N, D)
+        w:  shape=(D, 1)
+        gamma: scalar
+        lambda_: scalar
+
+    Returns:
+        loss: scalar number
+        w: shape=(D, 1)
+
+    >>> np.set_printoptions(8)
+    >>> y = np.c_[[0., 1.]]
+    >>> tx = np.arange(6).reshape(2, 3)
+    >>> w = np.array([[0.1], [0.2], [0.3]])
+    >>> lambda_ = 0.1
+    >>> gamma = 0.1
+    >>> loss, w = learning_by_penalized_gradient(y, tx, w, gamma, lambda_)
+    >>> round(loss, 8)
+    0.62137268
+    >>> w
+    array([[0.10837076],
+           [0.17532896],
+           [0.24228716]])
+    """
+    
+    loss, gradient = penalized_logistic_regression(y, tx, w, lambda_)
+  
+    w_t = w - gamma * gradient
+    return loss, w_t
+
+
+
+def reg_logistic_regression(y, tx, lambda_ , initial_w, max_iters, gamma):
+    """
+    Logistic regression using gradient descent.
+
+    Args:
+        y:  shape=(N, 1)
+        tx: shape=(N, D)
+        initial_w: initial weights, shape=(D, 1)
+        max_iters: number of iterations
+        gamma: learning rate
+
+    Returns:
+        w: final weights (D, 1)
+        weights: list of weight vectors per iteration
+        losses: list of loss values per iteration
+    """
+    losses = []
+    weights = []
+
+    w = initial_w.copy()
+
+    for iter in range(max_iters):
+        loss, w_new = penalized_logistic_regression_gradient_decent_step(y, tx, w, gamma, lambda_)
+        losses.append(loss)
+        weights.append(w_new.copy()) 
+        w = w_new
+
+    return w, weights, losses
