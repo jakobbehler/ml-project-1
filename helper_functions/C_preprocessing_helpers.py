@@ -56,18 +56,22 @@ def preprocessing_pipeline(
 
 
     # 4. impute missing values----------------------------------------------------------------------------------------
-    # TODO: implement imputation 
+    # TODO: implement imputation
+    X, cols_to_drop = impute_missing_values(X, feature_dict)
+    X, feature_names = drop_columns_by_index(X, feature_names, cols_to_drop)
+    feature_dict = build_feature_dictionary(classes_path, feature_names)
+
     
     # 5. normalize continuous----------------------------------------------------------------------------------------
    
     # can only be done if imputation is done
-    '''
+
     cont_indices = (
         feature_dict['continuous']['indices'] +
         feature_dict['continuous_but_null_also_a_number']['indices']
     )
-    X = ph.standardize_selected_columns(X, mask=cont_indices)
-    '''
+    X = standardize_selected_columns(X, mask=cont_indices)
+
 
     # 6. Drop unimportant columns----------------------------------------------------------------------------------------
 
@@ -477,3 +481,100 @@ def drop_feature_names(feature_names: list[str], drop_list: list[str]) -> list[s
     """
     drop_set = set(drop_list)  # faster lookup
     return [name for name in feature_names if name not in drop_set]
+
+def impute_missing_values(X, feature_dict, threshold=0.45):
+    """
+    Impute missing values in X according to feature types.
+    Assumes missing values are represented as np.nan only.
+
+    Parameters
+    ----------
+    X : np.ndarray, shape (n_samples, n_features)
+        Input dataset (can be dtype=object).
+    feature_dict : dict
+        Dictionary from build_feature_dictionary() with keys like 'continuous', 'categorical', etc.
+    threshold : float, optional
+        Proportion threshold to determine "too many" missing values per column.
+
+    Returns
+    -------
+    X_imputed : np.ndarray
+        Dataset with missing values imputed for columns under threshold.
+    cols_too_many_nans : list[int]
+        List of column indices with missing proportion >= threshold.
+    """
+    X_imputed = X.astype(object).copy()
+    n_samples = X.shape[0]
+    cols_too_many_nans = []
+
+    for category in ['continuous', 'categorical', 'ordinal', 'continuous_but_null_also_a_number']:
+        for idx in feature_dict[category]['indices']:
+            col = X_imputed[:, idx]
+
+            # Identify np.nan values
+            nan_mask = np.isnan(col.astype(float))
+            nan_ratio = np.sum(nan_mask, axis=0) / n_samples
+            n_missing = nan_mask.sum()
+
+            if nan_ratio >= threshold:
+                cols_too_many_nans.append(idx)
+                continue  # Skip imputation
+
+            # Quantile-based imputation for continuous data
+            if category == 'continuous' or category=='continuous_but_null_also_a_number':
+                valid_vals = col[~nan_mask]
+                sorted_vals = np.sort(valid_vals)
+
+                if valid_vals.size > 0:
+                    # Sample uniform quantiles
+                    quantiles = np.random.rand(n_missing)
+                    # samples values from the empirical distribution of the non-missing values in that column.
+                    sampled_vals = np.quantile(sorted_vals, quantiles)
+                    X_imputed[nan_mask, idx] = sampled_vals
+
+
+            elif category == 'categorical' or category=='ordinal':
+                # Build empirical distribution from non-nan values
+                valid_vals = col[~nan_mask]
+                if valid_vals.size > 0:
+                    unique_vals, counts = np.unique(valid_vals, return_counts=True)
+                    probs = counts / counts.sum()
+                    sampled_vals = np.random.choice(unique_vals, size=nan_mask.sum(), p=probs)
+                    X_imputed[nan_mask, idx] = sampled_vals
+
+    return X_imputed, set(cols_too_many_nans)
+import numpy as np
+
+def drop_columns_by_index(X, feature_names, indices_to_drop):
+    """
+    Remove columns from X and feature_names by index.
+
+    Parameters
+    ----------
+    X : np.ndarray, shape (n_samples, n_features)
+        Input feature matrix.
+    feature_names : list of str
+        List of feature names aligned with X columns.
+    indices_to_drop : list of int
+        Column indices to drop.
+
+    Returns
+    -------
+    X_new : np.ndarray
+        New array with selected columns removed.
+    feature_names_new : list of str
+        Feature names with corresponding entries removed.
+    """
+    # Sort and deduplicate indices (important for np.delete)
+    indices_to_drop = sorted(set(indices_to_drop))
+
+    # Drop columns from array
+    X_new = np.delete(X, indices_to_drop, axis=1)
+
+    # Drop corresponding feature names
+    feature_names = [
+        name for i, name in enumerate(feature_names) if i not in indices_to_drop
+    ]
+
+    return X_new, feature_names
+
