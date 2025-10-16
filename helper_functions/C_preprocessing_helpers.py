@@ -543,7 +543,6 @@ def impute_missing_values(X, feature_dict, threshold=0.45):
                     X_imputed[nan_mask, idx] = sampled_vals
 
     return X_imputed, set(cols_too_many_nans)
-import numpy as np
 
 def drop_columns_by_index(X, feature_names, indices_to_drop):
     """
