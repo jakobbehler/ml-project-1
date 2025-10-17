@@ -253,15 +253,12 @@ def calculate_logistic_loss(y, tx, w):
 
     # ***************************************************
     
-    n = y.shape[0]
-    loss = 0
+    Xw = tx @ w                 # shape (N,1)
+    sig = sigmoid(Xw)           # predicted probabilities
+    eps = 1e-15                 # avoids log(0)
+    loss = -np.mean(y * np.log(sig + eps) + (1 - y) * np.log(1 - sig + eps))
 
-    for i in range(n):
-        sig = sigmoid(tx[i].T @ w)
-     
-        loss += y[i] * np.log(sig) + (1-y[i]) * np.log(1-sig)
-    
-    return (-loss/n).item() # for some reason without item() its treated as a 1x1 numpy array, not a scalar
+    return loss 
 
 
 def calculate_logistic_gradient(y, tx, w):
@@ -285,15 +282,21 @@ def calculate_logistic_gradient(y, tx, w):
            [ 0.51712843]])
     """
     N = y.shape[0]
-
+ 
+    '''
     Xw_sig = np.zeros((N, 1)) # X(N,D) @ w(D,1) = Xw (N,1)
 
     Xw = tx @ w # (N,1) vector
+    print("Xw = ", Xw)
 
     for i in range(N):
+        print("sigmoid iteration:  ", i)
         Xw_sig[i] = sigmoid(Xw[i]) # because sigmoid works on scalars, not vectors we apply it feature by feature 
-
-    return tx.T @ (Xw_sig-y) / N
+    tx.T @ (Xw_sig-y) / N
+    '''
+    sig = sigmoid(tx @ w)
+    grad = tx.T @ (sig - y) / y.shape[0]
+    return grad 
 
 
 def logistic_regression_gradient_descent_step(y, tx, w, gamma):
@@ -324,10 +327,12 @@ def logistic_regression_gradient_descent_step(y, tx, w, gamma):
     """
     
     w_prime = w - gamma * calculate_logistic_gradient(y, tx, w)
+
     loss = calculate_logistic_loss(y, tx, w)
+
     return loss, w_prime
 
-def logistic_regression(y, tx, initial_w, max_iters, gamma):
+def logistic_regression(y, tx, initial_w, max_iters, gamma, verbose = False):
     """
     Logistic regression using gradient descent.
 
@@ -349,10 +354,24 @@ def logistic_regression(y, tx, initial_w, max_iters, gamma):
     w = initial_w.copy()
 
     for iter in range(max_iters):
+
         loss, w_new = logistic_regression_gradient_descent_step(y, tx, w, gamma)
+
         losses.append(loss)
         weights.append(w_new.copy()) 
         w = w_new
+
+        if verbose:
+            if max_iters <= 15:
+                print("---------------")
+                print(f"Iteration {iter+1}/{max_iters}")
+                print("Loss: ", loss)
+                print()
+            elif (iter + 1) % (max_iters // 5) == 0 or iter == 0 or iter == max_iters - 1:
+                print("---------------")
+                print(f"Iteration {iter+1}/{max_iters}")
+                print("Loss: ", loss)
+                print()
 
     return w, weights, losses
 

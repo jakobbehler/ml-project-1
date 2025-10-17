@@ -20,7 +20,7 @@ def preprocessing_pipeline(
     - Load metadata (like feature categories)
     - Clean ordinal features
     - Clean continuous features
-    - (todo) impute missing values
+    - impute missing values
     - (todo) normalize continuous features
     - Drop unimportant / empty columns
     -Drop highly correlated columns from X based on one of four modes: 'nothing', 'first', 'missing', or 'var'.
@@ -56,16 +56,14 @@ def preprocessing_pipeline(
 
 
     # 4. impute missing values----------------------------------------------------------------------------------------
-    # TODO: implement imputation
+
+    X = all_nulls_to_numpy_nans(X)
     X, cols_to_drop = impute_missing_values(X, feature_dict)
     X, feature_names = drop_columns_by_index(X, feature_names, cols_to_drop)
     feature_dict = build_feature_dictionary(classes_path, feature_names)
-
     
     # 5. normalize continuous----------------------------------------------------------------------------------------
    
-    # can only be done if imputation is done
-
     cont_indices = (
         feature_dict['continuous']['indices'] +
         feature_dict['continuous_but_null_also_a_number']['indices']
@@ -83,10 +81,12 @@ def preprocessing_pipeline(
     print("")
 
      # 7. Drop correlated columns----------------------------------------------------------------------------------------
-    
+    print("Dropping Too Correlated Features")
     X, feature_names, feature_dict = drop_correlated_features(
         X, feature_names, feature_dict, classes_path, correlation_data_path, mode=drop_correlated_mode
     )
+    print("Done.")
+    print("")
 
     # 8. Drop invalid columns----------------------------------------------------------------------------------------
     
@@ -481,6 +481,52 @@ def drop_feature_names(feature_names: list[str], drop_list: list[str]) -> list[s
     """
     drop_set = set(drop_list)  # faster lookup
     return [name for name in feature_names if name not in drop_set]
+
+import numpy as np
+
+def all_nulls_to_numpy_nans(X):
+    """
+    Convert all representations of missing values in X to np.nan.
+
+    Handles:
+    - Empty strings ('', ' ')
+    - Common textual nulls ('NaN', 'NULL', 'N/A', etc.)
+    - None
+    - Existing np.nan values
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Input array (any dtype, typically object or mixed).
+
+    Returns
+    -------
+    X_out : np.ndarray
+        Array of same shape as X, with all missing-like entries replaced by np.nan.
+    """
+
+    # Make sure we’re working on an object array copy
+    X_out = X.astype(object).copy()
+
+    # Values to treat as missing
+    missing_like = {'', ' ', 'NA', 'N/A', 'na', 'n/a',
+                    'NaN', 'nan', 'NULL', 'Null', 'null', None}
+
+    def to_nan(x):
+        # Already a float nan
+        if isinstance(x, float) and np.isnan(x):
+            return np.nan
+        # Textual or null-like representation
+        if x in missing_like:
+            return np.nan
+        return x
+
+    # elementwise conversion!
+    vectorized_replace = np.vectorize(to_nan)
+    return vectorized_replace(X_out)
+
+
+
 
 def impute_missing_values(X, feature_dict, threshold=0.45):
     """
