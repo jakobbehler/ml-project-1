@@ -3,3 +3,4 @@ x_train_processed_with_nan.csv
 x_train_processed_with_nan.npy
 x_train_processed.npy
 x_test_processed.npy
+data/processed
