@@ -20,7 +20,6 @@ def compute_MSE_loss(y, X, w):
     return Loss
 
 # Linear regression using gradient descent ------------------------------------------
-
 def compute_gradient(y, tx, w):
     """Computes the gradient at w.
 
@@ -40,6 +39,7 @@ def compute_gradient(y, tx, w):
     return delta_L
 
 
+# TODO: change name according to requirements to mean_squared_error_gd
 def gradient_descent(y, tx, initial_w, max_iters, gamma):
     """Linear regression using gradient descent
 
@@ -73,7 +73,7 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma):
                 bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]
             )
         )
-
+# TODO: should return (w, loss) which is the last weight vector of the method and corresponding loss
     return losses, ws
 
 # Linear regression using stochastic gradient descent ----------------------------------
@@ -96,7 +96,7 @@ def compute_stoch_gradient(y, tx, w):
     
     return delta_L
     
-
+#TODO: change name to mean_squared_error_sgd
 def stochastic_gradient_descent(y, tx, initial_w, batch_size, max_iters, gamma):
     """The Stochastic Gradient Descent algorithm (SGD).
 
@@ -140,6 +140,8 @@ def stochastic_gradient_descent(y, tx, initial_w, batch_size, max_iters, gamma):
                 bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]
             )
         )
+    # TODO: should return (w, loss) which is the last weight vector of the method and corresponding loss
+
     return losses, ws
 
 
@@ -212,9 +214,10 @@ def ridge_regression(y, tx, lambda_):
     # if lambda = 0 then the gram matrix could be non-invertible!
     if lambda_ > 0:
         w = np.linalg.solve(Gram_ridge, b)
-    else: 
+    else:
+        # TODO: np.linalg.lstsq is banned to use !!
         w, *_ = np.linalg.lstsq(tx, y, rcond=None) # backup
-        
+    # TODO: return (w, loss) but loss SHOULD NOT include penalty term
     return w
 
 
@@ -332,6 +335,7 @@ def logistic_regression_gradient_descent_step(y, tx, w, gamma):
 
     return loss, w_prime
 
+# TODO: input parameters should not contain verbose!
 def logistic_regression(y, tx, initial_w, max_iters, gamma, verbose = False):
     """
     Logistic regression using gradient descent.
@@ -372,6 +376,7 @@ def logistic_regression(y, tx, initial_w, max_iters, gamma, verbose = False):
                 print(f"Iteration {iter+1}/{max_iters}")
                 print("Loss: ", loss)
                 print()
+    # TODO: should return (w, loss) which is the last weight vector of the method and corresponding loss
 
     return w, weights, losses
 
@@ -478,5 +483,6 @@ def reg_logistic_regression(y, tx, lambda_ , initial_w, max_iters, gamma):
         losses.append(loss)
         weights.append(w_new.copy()) 
         w = w_new
-
+    # TODO: should return (w, loss) which is the last weight vector of the method and corresponding loss
+    # TODO: loss should not include penalty term
     return w, weights, losses
