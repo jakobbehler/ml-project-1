@@ -20,29 +20,18 @@ def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
         w: final weight vector of shape (D, 1)
         loss: final loss value (scalar)
     """
-    # Define parameters to store w and loss
-    ws = [initial_w]
-    losses = []
-    w = initial_w
+    w = initial_w.copy()
 
-    w_final = initial_w
-    loss_final = None
-
-    for n_iter in range(max_iters):
-
-        gradient = regresHelp.compute_gradient(y, tx, w)
+    if max_iters == 0:
         loss = regresHelp.compute_MSE_loss(y, tx, w)
-        w = w - gamma * gradient
-        # store w and loss
-        ws.append(w)
-        losses.append(loss)
-        w_final = w
-        loss_final = loss
+        return w, loss
 
-    return w_final, loss_final
+    for _ in range(max_iters):
+        grad = regresHelp.compute_gradient(y, tx, w)
+        w = w - gamma * grad
 
-
-# Linear regression using stochastic gradient descent ----------------------------------
+    loss = regresHelp.compute_MSE_loss(y, tx, w)
+    return w, loss
 
 
 def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
@@ -59,29 +48,20 @@ def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
         w: final weight vector of shape (D, 1)
         loss: final loss value (scalar)
     """
-    # Define parameters to store w and loss
-    ws = [initial_w]
-    losses = []
-    w = initial_w
+    w = initial_w.copy()
 
-    for n_iter in range(max_iters):
+    if max_iters == 0:
+        loss = regresHelp.compute_MSE_loss(y, tx, w)
+        return w, loss
 
-        # create random batch of size batch_size (in this case always 1)
-        N = y.shape[0]
-        idx = np.random.choice(N, size=1, replace=False)  # random indices
-        X_batch = tx[idx]
-        y_batch = y[idx]
+    for _ in range(max_iters):
+        i = np.random.randint(0, len(y))
+        y_i = np.array([y[i]])
+        x_i = np.array([tx[i]])
+        grad = regresHelp.compute_stoch_gradient(y_i, x_i, w)
+        w = w - gamma * grad
 
-        # compute gradient
-        gradient = regresHelp.compute_stoch_gradient(y_batch, X_batch, w)
-        loss = regresHelp.compute_MSE_loss(y_batch, X_batch, w)
-        w = w - gamma * gradient
-        losses.append(loss)
-        ws.append(w)
-
-    w = ws[-1]
-    loss = losses[-1]
-
+    loss = regresHelp.compute_MSE_loss(y, tx, w)
     return w, loss
 
 
@@ -169,8 +149,6 @@ def ridge_regression(y, tx, lambda_):
 ## ------------------------------------------------------------------------------------------------
 # LOGISTIC REGRESSION
 ##------------------------------------------------------------------------------------------------
-
-
 def logistic_regression(y, tx, initial_w, max_iters, gamma):
     """
     Logistic regression using gradient descent.
@@ -188,8 +166,17 @@ def logistic_regression(y, tx, initial_w, max_iters, gamma):
 
     """
     w = initial_w.copy()
+
+    # handle 0-iteration case (sneaky pytests ;))
+    if max_iters == 0:
+        loss = regresHelp.calculate_logistic_loss(y, tx, w)
+        return w, loss
+
     for _ in range(max_iters):
-        loss, w = regresHelp.logistic_regression_gradient_descent_step(y, tx, w, gamma)
+        _, w = regresHelp.logistic_regression_gradient_descent_step(y, tx, w, gamma)
+
+    # compute final loss after last update
+    loss = regresHelp.calculate_logistic_loss(y, tx, w)
     return w, loss
 
 
@@ -209,12 +196,17 @@ def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
         loss: final loss value (scalar)
     """
     w = initial_w.copy()
+
+    # handle 0-iteration case
+    if max_iters == 0:
+        loss = regresHelp.calculate_logistic_loss(y, tx, w)
+        return w, loss
+
     for _ in range(max_iters):
-        loss, w = regresHelp.penalized_logistic_regression_gradient_decent_step(
+        _, w = regresHelp.penalized_logistic_regression_gradient_decent_step(
             y, tx, w, gamma, lambda_
         )
-    loss = regresHelp.calculate_logistic_loss(
-        y, tx, w
-    )  # Compute loss (without penalty term)
 
+    # compute final loss (without penalty term)
+    loss = regresHelp.calculate_logistic_loss(y, tx, w)
     return w, loss
