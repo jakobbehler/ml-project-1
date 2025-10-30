@@ -21,7 +21,7 @@ def preprocessing_pipeline(
     - Clean ordinal features
     - Clean continuous features
     - impute missing values
-    - (todo) normalize continuous features
+    - normalize continuous features
     - Drop unimportant / empty columns
     -Drop highly correlated columns from X based on one of four modes: 'nothing', 'first', 'missing', or 'var'.
     - One-hot encode categorical columns
