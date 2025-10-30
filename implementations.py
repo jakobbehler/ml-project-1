@@ -1,5 +1,5 @@
 import numpy as np
-import B_regression_helpers as regresHelp
+import helper_functions.B_regression_helpers as regresHelp
 
 ## ------------------------------------------------------------------------------------------------
 # LINEAR REGRESSION
