@@ -1,10 +1,10 @@
 import numpy as np
 import helper_functions.B_regression_helpers as regresHelp
 
-
 ## ------------------------------------------------------------------------------------------------
 # LINEAR REGRESSION
 ##------------------------------------------------------------------------------------------------
+
 
 def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
     """Linear regression using gradient descent
@@ -63,6 +63,7 @@ def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
 
     loss = regresHelp.compute_MSE_loss(y, tx, w)
     return w, loss
+
 
 ## ------------------------------------------------------------------------------------------------
 # LEAST SQUARES & RIDGE
@@ -148,8 +149,6 @@ def ridge_regression(y, tx, lambda_):
 ## ------------------------------------------------------------------------------------------------
 # LOGISTIC REGRESSION
 ##------------------------------------------------------------------------------------------------
-
-
 def logistic_regression(y, tx, initial_w, max_iters, gamma):
     """
     Logistic regression using gradient descent.
@@ -167,8 +166,17 @@ def logistic_regression(y, tx, initial_w, max_iters, gamma):
 
     """
     w = initial_w.copy()
+
+    # handle 0-iteration case (sneaky pytests ;))
+    if max_iters == 0:
+        loss = regresHelp.calculate_logistic_loss(y, tx, w)
+        return w, loss
+
     for _ in range(max_iters):
-        loss, w = regresHelp.logistic_regression_gradient_descent_step(y, tx, w, gamma)
+        _, w = regresHelp.logistic_regression_gradient_descent_step(y, tx, w, gamma)
+
+    # compute final loss after last update
+    loss = regresHelp.calculate_logistic_loss(y, tx, w)
     return w, loss
 
 
@@ -188,12 +196,17 @@ def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
         loss: final loss value (scalar)
     """
     w = initial_w.copy()
+
+    # handle 0-iteration case
+    if max_iters == 0:
+        loss = regresHelp.calculate_logistic_loss(y, tx, w)
+        return w, loss
+
     for _ in range(max_iters):
-        loss, w = regresHelp.penalized_logistic_regression_gradient_decent_step(
+        _, w = regresHelp.penalized_logistic_regression_gradient_decent_step(
             y, tx, w, gamma, lambda_
         )
-    loss = regresHelp.calculate_logistic_loss(
-        y, tx, w
-    )  # Compute loss (without penalty term)
 
+    # compute final loss (without penalty term)
+    loss = regresHelp.calculate_logistic_loss(y, tx, w)
     return w, loss
