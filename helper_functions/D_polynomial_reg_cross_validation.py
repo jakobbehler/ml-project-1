@@ -159,8 +159,6 @@ def cross_validation(y, x, k_indices, k, lambda_, degree):
     (0.019866645527597114, 0.33555914361295175)
     """
 
-    # get k'th subgroup in test, others in train: TODO
-
     te_idx = k_indices[k, :]                     # test indices
     tr_idx = np.setdiff1d(np.arange(len(y)), te_idx)  # everything else = train
 
@@ -169,14 +167,11 @@ def cross_validation(y, x, k_indices, k, lambda_, degree):
     y_tr = y[tr_idx]
     y_te = y[te_idx]
 
-    # INSERT YOUR CODE HERE
-    # form data with polynomial degree: TODO
+ 
 
     x_tr_poly = build_poly(x_tr, degree)
     x_te_poly = build_poly(x_te, degree)
 
-    # INSERT YOUR CODE HERE
-    # ridge regression: TODO
     w = ridge_regression(y_tr, x_tr_poly, lambda_)
     
     loss_tr = np.sqrt(2 * compute_mse(y_tr, x_tr_poly, w))

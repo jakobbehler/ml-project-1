@@ -5,8 +5,8 @@ import helper_functions.B_regression_helpers as regresHelp
 # LINEAR REGRESSION
 ##------------------------------------------------------------------------------------------------
 
+
 def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
-    
     """Linear regression using gradient descent
 
     Args:
@@ -24,6 +24,10 @@ def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
     ws = [initial_w]
     losses = []
     w = initial_w
+
+    w_final = initial_w
+    loss_final = None
+
     for n_iter in range(max_iters):
 
         gradient = regresHelp.compute_gradient(y, tx, w)
@@ -32,14 +36,15 @@ def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
         # store w and loss
         ws.append(w)
         losses.append(loss)
+        w_final = w
+        loss_final = loss
 
-    w = ws[-1]
-    loss = losses[-1]
+    return w_final, loss_final
 
-    return w, loss
 
 # Linear regression using stochastic gradient descent ----------------------------------
-    
+
+
 def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
     """The Stochastic Gradient Descent algorithm (SGD).
 
@@ -79,9 +84,11 @@ def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
 
     return w, loss
 
+
 ## ------------------------------------------------------------------------------------------------
 # LEAST SQUARES & RIDGE
 ##------------------------------------------------------------------------------------------------
+
 
 def least_squares(y, tx):
     """Calculate the least squares solution.
@@ -98,29 +105,31 @@ def least_squares(y, tx):
     >>> least_squares(np.array([0.1,0.2]), np.array([[2.3, 3.2], [1., 0.1]]))
     (array([ 0.21212121, -0.12121212]), 8.666684749742561e-33)
     """
-    X = tx.copy() # for better understanding of variable names
+    X = tx.copy()  # for better understanding of variable names
 
     Gram = X.T @ X
-    b = X.T @ y 
+    b = X.T @ y
 
     # sanity check: if Gram Matrix is invertible!
     rank = np.linalg.matrix_rank(Gram)
     D = Gram.shape[0]
 
-    if rank == D: # invertible iff rank = D
+    if rank == D:  # invertible iff rank = D
         w = np.linalg.solve(Gram, b)
 
-    else: # handle singalrar matrix
-        w = np.linalg.pinv(Gram) @ b # pseudo inverse for singular matrices
+    else:  # handle singalrar matrix
+        w = np.linalg.pinv(Gram) @ b  # pseudo inverse for singular matrices
 
     # MSE Loss
     N = y.shape[0]
-    e = y- X.dot(w)
-    loss = np.dot(e.T, e)/(2*N)
+    e = y - X.dot(w)
+    loss = np.dot(e.T, e) / (2 * N)
 
     return w, loss
 
+
 # Ridge regression using normal equations -----------------------------------------------
+
 
 def ridge_regression(y, tx, lambda_):
     """Ridge regression using normal equations
@@ -146,7 +155,7 @@ def ridge_regression(y, tx, lambda_):
     # Handle possible singular matrix
     rank = np.linalg.matrix_rank(Gram_ridge)
     if rank != D:
-        w = np.linalg.pinv(Gram_ridge) @ b # pseudo inverse for singular matrices
+        w = np.linalg.pinv(Gram_ridge) @ b  # pseudo inverse for singular matrices
     else:
         w = np.linalg.solve(Gram_ridge, b)
 
@@ -184,7 +193,7 @@ def logistic_regression(y, tx, initial_w, max_iters, gamma):
     return w, loss
 
 
-def reg_logistic_regression(y, tx, lambda_ , initial_w, max_iters, gamma):
+def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
     """
     Logistic regression using gradient descent.
 
@@ -201,7 +210,11 @@ def reg_logistic_regression(y, tx, lambda_ , initial_w, max_iters, gamma):
     """
     w = initial_w.copy()
     for _ in range(max_iters):
-        loss, w = regresHelp.penalized_logistic_regression_gradient_decent_step(y, tx, w, gamma, lambda_)
-    loss = regresHelp.calculate_logistic_loss(y, tx, w) # Compute loss (without penalty term)
+        loss, w = regresHelp.penalized_logistic_regression_gradient_decent_step(
+            y, tx, w, gamma, lambda_
+        )
+    loss = regresHelp.calculate_logistic_loss(
+        y, tx, w
+    )  # Compute loss (without penalty term)
 
     return w, loss
