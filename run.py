@@ -16,49 +16,59 @@ y_train_path = procesed_data_path + 'y_train.npy'
 ids_path = 'data/test_ids.npy'
 output_folder = 'data/test_results/'
 
-model = 'regularized-logistic'
+model = 'ridge-regression'
 data_correlation_filter = 'none'
 
 # HYPERPARAMS
 
-gamma = 0.4
-max_iters = 100
-decision_boundary = 0.15
-
+# gamma = 0.4
+# max_iters = 100
+# decision_boundary = 0.15
+lambda_=1e-4
 
 def main():
     
     # load procesed data
-    x_training_processed, y_training, x_test, y_training, D, ids = load_data()
+    x_training_processed, y_training, x_test, D, ids = load_data()
+
+    #downsample negative class
+    x_training_processed_down, y_training_down = ph.downsample(
+        X_train=x_training_processed,
+        y_train=y_training,
+        num=2.5
+    )
 
     # train model
-    if model == 'regularized-logistic':
-        w = run_logistic_regression(x_training_processed, y_training, D)
+    if model == 'ridge-regression':
+        w = run_ridge_regression(x_training_processed_down, y_training_down, lambda_)
 
     # apply to test data & convert from 0, 1 to -1, 1
-    y_pred = regressionHelpers.sigmoid(x_test @ w)
-    y_pred = np.where(y_pred > decision_boundary, 1, -1)
+    y_pred = np.sign(x_test @ w)
 
     # format to submission format csv
     filename = output_folder + 'y_submission_test'
-    ids = np.arange(0, len(y_pred))
+    # #TODO: i think ids should be from file, not aranged from 0, ..to
+    # ids = np.arange(0, len(y_pred))
     create_csv_submission(ids, y_pred, filename)
 
 
 def load_data():
     # load procesed data
     x_training_processed = load_numpy(x_train_path)
+    # TODO: check format of y_train.npy (N, 2) or N
+    # y_training = load_numpy(y_train_path)[:, 1]
     y_training = load_numpy(y_train_path)
     x_test = load_numpy(x_test_path)
-    y_training = (y_training + 1) / 2
+    # y_training = (y_training + 1) / 2
 
     ids = load_numpy(ids_path)
     N, D = x_training_processed.shape
-    return x_training_processed, y_training, x_test, y_training, D, ids
+    return x_training_processed, y_training, x_test, D, ids
     
-def run_logistic_regression(x_training_processed, y_training, D):
-    initial_w = np.random.randn(D)
-    w, loss = regression.logistic_regression(y_training, x_training_processed, initial_w, max_iters, gamma)
+def run_ridge_regression(x_training_processed, y_training, lambda_):
+    w, loss = regression.ridge_regression(
+        y_training, x_training_processed, lambda_
+    )
     return w
 
 

@@ -623,3 +623,55 @@ def drop_columns_by_index(X, feature_names, indices_to_drop):
 
     return X_new, feature_names
 
+def downsample(X_train, y_train, major_value=-1, num=2):
+    """
+    Downsample the majority class to create a more balanced training set.
+
+    Args:
+        X_train : np.ndarray
+            Feature matrix of shape (N, d)
+        y_train : np.ndarray
+            Label array (or matrix if labels are in second column)
+        major_value : int or float
+            Label value of the majority class (default = -1)
+        num : int
+            How many times larger the majority subset should be
+            compared to the minority class. For example:
+            num=2 → keep twice as many majority samples as minority ones.
+
+    Returns:
+        X_train_down : np.ndarray
+            Downsampled feature matrix
+        y_train_down : np.ndarray
+            Corresponding labels
+    """
+
+    # Fix random seed for reproducibility
+    np.random.seed(42)
+
+    # Assuming class labels are stored in the second column (index 1) of y_train
+    majority_idx = np.where(y_train[:, 1] == major_value)[0]
+    minority_idx = np.where(y_train[:, 1] != major_value)[0]
+
+    n_minority = len(minority_idx)
+    n_majority = len(majority_idx)
+
+    # Sample from majority indices so that we keep
+    # `num × n_minority` samples (without replacement)
+    majority_downsample_idx = np.random.choice(
+        majority_idx,
+        size=int(n_minority * num),
+        replace=False
+    )
+
+
+    balanced_idx = np.concatenate([minority_idx, majority_downsample_idx])
+
+    # Shuffle indices so the dataset is mixed
+    np.random.shuffle(balanced_idx)
+
+    X_train_down = X_train[balanced_idx]
+    y_train_down = y_train[balanced_idx]
+
+
+    return X_train_down, y_train_down
