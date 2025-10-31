@@ -54,6 +54,10 @@ def main():
 
 
 def load_data():
+
+    # processed data was processed using the preprocesing pipeline function 
+    # in C_preprocessing_helpers.py
+
     # load procesed data
     x_training_processed = load_numpy(x_train_path)
 
