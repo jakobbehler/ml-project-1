@@ -649,9 +649,18 @@ def downsample(X_train, y_train, major_value=-1, num=2):
     # Fix random seed for reproducibility
     np.random.seed(42)
 
-    # Assuming class labels are stored in the second column (index 1) of y_train
-    majority_idx = np.where(y_train[:, 1] == major_value)[0]
-    minority_idx = np.where(y_train[:, 1] != major_value)[0]
+    # Works for both unprocessed y_train where the sids are included or not
+    # (so number of columns = 1 or 2)
+    # For n = 2, assume class labels are in the second column (index 1) of y_train
+
+    if y_train.ndim > 1 and y_train.shape[1] > 1:
+        # Case where y_train includes IDs or other columns
+        majority_idx = np.where(y_train[:, 1] == major_value)[0]
+        minority_idx = np.where(y_train[:, 1] != major_value)[0]
+    else:
+        # Case where y_train is a single-column vector
+        majority_idx = np.where(y_train == major_value)[0]
+        minority_idx = np.where(y_train != major_value)[0]
 
     n_minority = len(minority_idx)
     n_majority = len(majority_idx)
